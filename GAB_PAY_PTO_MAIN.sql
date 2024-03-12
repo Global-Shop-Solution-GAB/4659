@@ -1,0 +1,19 @@
+/* ==========================================
+ * TABLE: GAB_PAY_PTO_MAIN
+ * ========================================== */
+CREATE TABLE "GAB_PAY_PTO_MAIN"(
+ "ID" IDENTITY DEFAULT '0',
+ "USERID" CHAR(8),
+ "DATE_CREATED" DATE DEFAULT CURDATE() NOT NULL ,
+ "DATE_D" DATE,
+ "REASON" CHAR(30),
+ "EMPLOYEE" CHAR(5),
+ "EMPLOYEE_NAME" CHAR(30),
+ "POINTS" NUMERIC(10,2),
+ "NOTES" VARCHAR(1000),
+ PRIMARY KEY ("ID"),
+ UNIQUE ("ID"));
+
+CREATE UNIQUE INDEX "PK_ID" USING 0 ON "GAB_PAY_PTO_MAIN"("ID");
+
+
