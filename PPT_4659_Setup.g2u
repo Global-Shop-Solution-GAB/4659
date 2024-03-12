@@ -1,0 +1,207 @@
+Program.Sub.ScreenSU.Start	
+	Function.Intrinsic.Control.CallSub(CreateFMain)	
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+	'Include
+	Program.External.Include.Library("PPT_4659_Setup.lib")
+
+	'Globals
+	Variable.Global.bChangesExist.Declare(Boolean, False)
+	Variable.Global.iSelectedRowIndex.Declare(Long, -1)
+	
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+	
+	Function.Intrinsic.Control.CallSub(BuildDtReasonsPoints)
+	Gui.F_Main.gsgcReasonsPoints.DataSource(dtReasonsPoints)
+	Function.Intrinsic.Control.CallSub(SetGridProperties)
+
+	Gui.F_Main..Show
+
+Program.Sub.Main.End
+
+Program.Sub.CreateFMain.Start
+	Gui.F_Main..create
+	Gui.F_Main..caption("Points Maintenance Screen")
+	Gui.F_Main..size(4390,5805)
+	Gui.F_Main..minx(4390)
+	Gui.F_Main..miny(5805)
+	Gui.F_Main..position(500,500)
+	Gui.F_Main..event(UnLoad,F_Main_Unload)
+	Gui.F_Main..forecolor(0)
+	Gui.F_Main..BackColor(-2147483633)
+	Gui.F_Main..maxbutton(False)
+	Gui.F_Main..minbutton(False)
+	Gui.F_Main..mousepointer(0)
+	
+	'lblReason
+	Gui.F_Main.lblReason.Create(Label,"Reason",True,735,255,0,210,165,True,0,"Arial",8,-2147483633,0)
+	
+	'txtReason
+	Gui.F_Main.txtReason.Create(TextBox,"",True,2295,300,0,210,390,True,0,"Arial",8,-2147483643,1)
+	Gui.F_Main.txtReason.MaxLength(30)
+	Gui.F_Main.txtReason.defaultvalue("Reason")
+	
+	'lblPoints
+	Gui.F_Main.lblPoints.Create(Label,"Points",True,735,255,0,3015,165,True,0,"Arial",8,-2147483633,0)
+	
+	'txtPoints
+	Gui.F_Main.txtPoints.Create(TextBox,"",True,975,300,0,3015,390,True,0,"Arial",8,-2147483643,1)
+	Gui.F_Main.txtPoints.defaultvalue("Points")
+	
+	'cmdAddRecord
+	Gui.F_Main.cmdAddRecord.Create(Button)
+	Gui.F_Main.cmdAddRecord.Size(1320,360)
+	Gui.F_Main.cmdAddRecord.Position(210,990)
+	Gui.F_Main.cmdAddRecord.Caption("Add")
+	Gui.F_Main.cmdAddRecord.Event(Click,cmdAddRecord_Click)
+	
+	'cmdUpdateRecord
+	Gui.F_Main.cmdUpdateRecord.Create(Button)
+	Gui.F_Main.cmdUpdateRecord.Size(1320,360)
+	Gui.F_Main.cmdUpdateRecord.Position(210,990)
+	Gui.F_Main.cmdUpdateRecord.Caption("Update")
+	Gui.F_Main.cmdUpdateRecord.Visible(False)
+	Gui.F_Main.cmdUpdateRecord.Event(Click,cmdUpdateRecord_Click)
+	
+	'cmdCancelUpdate
+	Gui.F_Main.cmdCancelUpdate.Create(Button)
+	Gui.F_Main.cmdCancelUpdate.Size(1320,360)
+	Gui.F_Main.cmdCancelUpdate.Position(2670,990)
+	Gui.F_Main.cmdCancelUpdate.Caption("Cancel")
+	Gui.F_Main.cmdCancelUpdate.Visible(False)
+	Gui.F_Main.cmdCancelUpdate.Event(Click,cmdCancelUpdate_Click)
+
+	Function.Intrinsic.Control.CallSub(CreateGsgcReasonsPoints)
+Program.Sub.CreateFMain.End
+
+Program.Sub.SetGridProperties.Start
+
+	'Gridview properties
+	GUI.F_Main.gsgcReasonsPoints.SetGridviewProperty(dtReasonsPoints, "Editable", False)
+	Gui.F_Main.gsgcReasonsPoints.SetGridViewProperty(dtReasonsPoints, "ReadOnly", True)
+	Gui.F_Main.gsgcReasonsPoints.SetGridViewProperty(dtReasonsPoints, "AllowFilter", True)
+	Gui.F_Main.gsgcReasonsPoints.SetGridViewProperty(dtReasonsPoints, "EnableAppearanceEvenRow", True)
+	Gui.F_Main.gsgcReasonsPoints.SetGridViewProperty(dtReasonsPoints, "OptionsViewColumnAutoWidth", True)
+	Gui.F_Main.gsgcReasonsPoints.SetGridviewProperty(dtReasonsPoints, "Multiselect", False)
+
+	'Column Properties
+	GUI.F_Main.gsgcReasonsPoints.SetColumnProperty(dtReasonsPoints, "id", "Visible", False)
+	GUI.F_Main.gsgcReasonsPoints.SetColumnProperty(dtReasonsPoints, "Points", "MinWidth", 60)
+	GUI.F_Main.gsgcReasonsPoints.SetColumnProperty(dtReasonsPoints, "Points", "MaxWidth", 61)
+Program.Sub.SetGridProperties.End
+
+Program.Sub.CreateGsgcReasonsPoints.Start
+	'gsgcReasonsPoints
+	Gui.F_Main.gsgcReasonsPoints.Create(GsGridControl)
+	Gui.F_Main.gsgcReasonsPoints.Size(3855,3730)
+	Gui.F_Main.gsgcReasonsPoints.Position(210,1605)
+	Gui.F_Main.gsgcReasonsPoints.Anchor(15)
+	
+	'Events
+	Gui.F_Main.gsgcReasonsPoints.Event(RowCellClick, gsgcReasonsPoints_RowCellClick)
+	
+	'Context Menu
+	Function.Intrinsic.Control.CallSub(CreateCtxmReasonsPoints)
+	GUI.F_Main.gsgcReasonsPoints.ContextMenuAttach("ctxmReasonsPoints")
+
+Program.Sub.CreateGsgcReasonsPoints.End
+
+Program.Sub.CreateCtxmReasonsPoints.Start
+	GUI.F_Main..ContextMenuCreate("ctxmReasonsPoints")
+
+	'ctxDelete
+	GUI.F_Main..ContextMenuAddItem("ctxmReasonsPoints", "ctxDelete", 0, "Delete")
+	GUI.F_Main..ContextMenuSetItemEventHandler("ctxmReasonsPoints", "ctxDelete", CtxmReasonsPoints_Click)
+
+	'ctxEdit
+	GUI.F_Main..ContextMenuAddItem("ctxmReasonsPoints", "ctxEdit", 0, "Edit")
+	GUI.F_Main..ContextMenuSetItemEventHandler("ctxmReasonsPoints", "ctxEdit", CtxmReasonsPoints_Click)
+
+	'ctxSave
+	GUI.F_Main..ContextMenuAddItem("ctxmReasonsPoints", "ctxSave", 0, "Save")
+	GUI.F_Main..ContextMenuSetItemEventHandler("ctxmReasonsPoints", "ctxSave", CtxmReasonsPoints_Click)
+
+	' GUI.F_Main.gsgcReasonsPoints.ContextMenuAttach("ctxmReasonsPoints")
+Program.Sub.CreateCtxmReasonsPoints.End
+
+Program.Sub.cmdAddRecord_Click.Start
+	
+	Function.Intrinsic.Control.CallSub(GetInputFieldsAreValid)
+	Function.Intrinsic.Control.If(Variable.Args.bInputFieldsAreValid)
+		Function.Intrinsic.Control.CallSub(AddRowFromInputFields)
+		Function.Intrinsic.Control.CallSub(ClearInputFields)
+	
+	Function.Intrinsic.Control.Else
+		Function.Intrinsic.Control.CallSub(AlertFieldsAreInvalid)
+	Function.Intrinsic.Control.EndIf
+	
+Program.Sub.cmdAddRecord_Click.End
+
+Program.Sub.cmdUpdateRecord_Click.Start
+	Function.Intrinsic.Control.BlockEvents()
+
+	Function.Intrinsic.Control.CallSub(GetInputFieldsAreValid)
+	Function.Intrinsic.Control.If(Variable.Args.bInputFieldsAreValid.Not)
+		Function.Intrinsic.UI.MsgBox("Fields were missing or invalid.", "Required Fields")
+	
+	Function.Intrinsic.Control.Else
+		Function.Intrinsic.Control.CallSub(UpdateRowFromInputFields, iRowIndex, Variable.Global.iSelectedRowIndex)
+		Function.Intrinsic.Control.CallSub(ClearInputFields)
+		Function.Intrinsic.Control.CallSub(ShowAddControls)
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.UnblockEvents()
+Program.Sub.cmdUpdateRecord_Click.End
+
+Program.Sub.cmdCancelUpdate_Click.Start
+	Function.Intrinsic.Control.CallSub(ClearInputFields)
+	Function.Intrinsic.Control.CallSub(ResetSelectedRowIndex)
+	Function.Intrinsic.Control.CallSub(ShowAddControls)
+Program.Sub.cmdCancelUpdate_Click.End
+
+Program.Sub.CtxmReasonsPoints_Click.Start
+'@ Event Arg ItemName	: String = The name of the item clicked
+
+	Function.Intrinsic.Control.BlockEvents
+
+	Function.Intrinsic.Control.SelectCase(Variable.Args.ItemName.LCase)
+		'ctxDelete
+		Function.Intrinsic.Control.Case("ctxdelete")
+			Function.Intrinsic.Control.CallSub(DeleteSelectedReason)
+		'ctxEdit
+		Function.Intrinsic.Control.Case("ctxedit")
+			Function.Intrinsic.Control.CallSub(EditSelectedReason)
+		'ctxSave
+		Function.Intrinsic.Control.Case("ctxsave")
+			Function.Intrinsic.Control.CallSub(SaveReasons)
+			Function.Intrinsic.Control.CallSub(ReloadDtReasonsPoints)
+		'Else
+		Function.Intrinsic.Control.CaseElse
+			'Element not found
+			Function.Intrinsic.UI.MsgBox("UI element not found.", "Unregistered Event")
+	Function.Intrinsic.Control.EndSelect
+
+	Function.Intrinsic.Control.UnblockEvents
+Program.Sub.CtxmReasonsPoints_Click.End
+
+Program.Sub.gsgcReasonsPoints_RowCellClick.Start
+	Function.Intrinsic.Control.If(Variable.Args.Clicks, <, 2)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.BlockEvents()
+	Function.Intrinsic.Control.CallSub(EditSelectedReason)
+	Function.Intrinsic.Control.UnblockEvents()
+Program.Sub.gsgcReasonsPoints_RowCellClick.End
+
+Program.Sub.F_Main_Unload.Start
+	
+	Function.Intrinsic.Control.CallSub(GetUncommittedChangesExist)
+	Function.Intrinsic.Control.If(Variable.Args.bUncommittedChangesExist.Not)
+		Function.Intrinsic.Control.CallSub(SaveReasons)		
+		F.Intrinsic.Control.End
+	Function.Intrinsic.Control.EndIf
+Program.Sub.F_Main_Unload.End
