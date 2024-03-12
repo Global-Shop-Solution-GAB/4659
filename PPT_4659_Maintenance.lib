@@ -1,0 +1,661 @@
+﻿Program.Sub.BuildDataTable.Start
+'@ Arg sDtName	: String = Name of datatable to create
+'@ Arg sConName	: String = Name of db connection
+'@ Arg sQuery	: String = Query to use
+
+	Function.Intrinsic.Control.Try
+		Function.Intrinsic.UI.InvokeWaitDialog("Loading Results...")
+			Function.Data.DataTable.CreateFromSQL(Variable.Args.sDtName, Variable.Args.sConName, Variable.Args.sQuery, True)
+		Function.Intrinsic.UI.CloseWaitDialog
+	Function.Intrinsic.Control.Catch
+		Function.Intrinsic.Control.CallSub(ShowErrorAndEnd)
+	Function.Intrinsic.Control.EndTry
+Program.Sub.BuildDataTable.End
+
+Program.Sub.ReloadDtHistory.Start
+'@ Arg sEmployeeNumber	: String  = Left padded with 0
+	Function.Intrinsic.Control.CallSub(GetEmployeeHistoryQuery, "sEmployeeNumber", Variable.Args.sEmployeeNumber)
+	
+	Function.Intrinsic.Control.CallSub(OpenCompanyDB)
+	
+	Function.Intrinsic.Control.CallSub(ReloadDataTable, "sDtName", dtHistory, "sConName", "CompanyDB", "sQuery", Variable.Args.sEmployeeHistoryQuery)
+	Function.Intrinsic.Control.CallSub(CloseCompanyDB)
+	
+	Function.Intrinsic.Control.CallSub(UpdateDisplayTotal)
+Program.Sub.ReloadDtHistory.End
+
+Program.Sub.GetEmployeeHistoryQuery.Start
+'@ Arg sEmployeeNumber	: String = Left padded with zero's
+'@ Return sEmployeeHistoryQuery	: String
+
+	Variable.Local.sQuery.Declare
+	
+	Function.Intrinsic.String.Build("Select ID as 'RecordId', rtrim(REASON) as Reason, POINTS, rtrim(NOTES) as Notes, Date_D as 'DateDisplayed', DATE_CREATED as 'DateCreated', rtrim(USERID) as UserId, rtrim(EMPLOYEE_NAME) as 'EmployeeName', rtrim(EMPLOYEE) as 'EmployeeNumber' From GAB_PAY_PTO_MAIN Where EMPLOYEE = '{0}' Order by DateDisplayed Desc", Variable.Args.sEmployeeNumber, Variable.Local.sQuery)
+
+	Function.Intrinsic.Variable.AddRV("sEmployeeHistoryQuery", Variable.Local.sQuery)
+Program.Sub.GetEmployeeHistoryQuery.End
+
+Program.Sub.ReloadDataTable.Start
+'@ Arg sDtName	: String = Name of the datatable to reload
+'@ Arg sConName	: String = Name of db connection
+'@ Arg sQuery	: String = Query to use
+
+	'sTempName
+	Variable.Local.sTempName.Declare(String, "dtRefresh{0}")
+	Function.Intrinsic.String.Build(Variable.Local.sTempName, Variable.Args.sDtName, Variable.Local.sTempName)
+
+	'build temp table
+	Function.Intrinsic.Control.CallSub(BuildDataTable, "sDtName", Variable.Local.sTempName, "sConName", Variable.Args.sConName, "sQuery", Variable.Args.sQuery)
+	'delete row main table
+	Function.Data.DataTable.DeleteRow(Variable.Args.sDtName)
+	'merge tables
+	Function.Data.DataTable.Merge(Variable.Local.sTempName, Variable.Args.sDtName, false, 4)
+	'close temp table
+	Function.Data.DataTable.Close(Variable.Local.sTempName)
+	'Accept changes to sDtName
+	Function.Data.DataTable.AcceptChanges(Variable.Args.sDtName)
+
+Program.Sub.ReloadDataTable.End
+
+Program.Sub.UpdateDisplayTotal.Start
+	Function.Intrinsic.Control.CallSub(GetTotalPoints)
+	Function.Intrinsic.Control.CallSub(SetDisplayTotal, "fAmount", Variable.Args.fTotalPoints)
+	
+Program.Sub.UpdateDisplayTotal.End
+
+Program.Sub.GetTotalPoints.Start
+'@ Return fTotalPoints	: Float
+
+	Variable.Local.fTotal.Declare(Float)
+	Function.Data.DataTable.Compute(dtHistory, "sum(points)", "", Variable.Local.fTotal)
+
+	Function.Intrinsic.Variable.AddRV("fTotalPoints", Variable.Local.fTotal)
+Program.Sub.GetTotalPoints.End
+
+Program.Sub.SetDisplayTotal.Start
+'@ Arg fAmount	: Float
+
+	Variable.Local.sTotal.Declare(String)
+	Function.Intrinsic.String.Split(V.Screen.F_Main!lblTotal.Caption, ":", Variable.Local.sTotal)
+
+	Function.Intrinsic.Control.If(Variable.Local.sTotal.UBound, =, 0)
+		Variable.Local.sTotal.RedimPreserve(1)
+	Function.Intrinsic.Control.EndIf
+
+	Variable.Local.sTotal(1).Set(Variable.Args.fAmount)
+	Function.Intrinsic.String.Build("{0}: {1}", Variable.Local.sTotal(0), Variable.Local.sTotal(1), Variable.Local.sTotal)
+	
+	Gui.F_Main.lblTotal.Caption(Variable.Local.sTotal)
+Program.Sub.SetDisplayTotal.End
+
+Program.Sub.PrepareView.Start
+'@ Arg bEditable	: Boolean
+
+	Variable.Local.sEmployeeNumber.Declare(String)
+
+	Function.Intrinsic.Control.If(Variable.Args.bEditable.Not)
+		Function.Intrinsic.String.LPad(Variable.Passed.000002,"0",5,Variable.Local.sEmployeeNumber)
+		Gui.F_Main.txtEmp.Text(Variable.Local.sEmployeeNumber)
+		Gui.F_Main.txtEmpName.Text(Variable.Passed.000013)
+	Function.Intrinsic.Control.EndIf
+
+	f.Intrinsic.Control.If(Variable.Args.bEditable)
+		Gui.F_Main.cmdBrowseEmployees.Visible(True)
+	f.Intrinsic.Control.Else
+		Gui.F_Main.cmdBrowseEmployees.Visible(False)
+	f.Intrinsic.Control.EndIf
+	
+Program.Sub.PrepareView.End
+
+Program.Sub.DeleteSelectedRecord.Start
+
+	Function.Intrinsic.Control.CallSub(GetSelectedRowIndex)
+	Function.Intrinsic.Control.CallSub(DeleteRecord, "iRowIndex", Variable.Args.iRowIndex)
+
+	Function.Intrinsic.Control.If(Variable.Args.iRowIndex.Long, =, Variable.Global.iSelectedRowIndex.Long)
+		Function.Intrinsic.Control.CallSub(ShowAddControls)
+	Function.Intrinsic.Control.EndIf
+
+Program.Sub.DeleteSelectedRecord.End
+
+Program.Sub.GetSelectedRowIndex.Start
+'@ Return iRowIndex	: Long
+	
+	'Get selected row
+	Variable.Local.iRowIndex.Declare(Long)
+	Gui.F_Main.gsgcHistory.GetSelectedRows(gvHistory, Variable.Local.iRowIndex)
+
+	Function.Intrinsic.Variable.AddRV("iRowIndex", Variable.Local.iRowIndex)
+Program.Sub.GetSelectedRowIndex.End
+
+Program.Sub.DeleteRecord.Start
+'@ Arg iRowIndex
+
+	Function.Data.DataTable.DeleteRow(dtHistory, Variable.Args.iRowIndex)
+Program.Sub.DeleteRecord.End
+
+Program.Sub.ShowAddControls.Start
+
+	Function.Intrinsic.Control.CallSub(ToggleAddUpdateControls, bUpdating, False)
+Program.Sub.ShowAddControls.End
+
+Program.Sub.ToggleAddUpdateControls.Start
+'@ Arg bUpdating	: Boolean
+
+	Gui.F_Main.cmdAddRecord.Visible(Variable.Args.bUpdating.Not)
+	Gui.F_Main.cmdUpdateRecord.Visible(Variable.Args.bUpdating)
+	Gui.F_Main.cmdCancelUpdate.Visible(Variable.Args.bUpdating)
+Program.Sub.ToggleAddUpdateControls.End
+
+Program.Sub.EditSelectedRow.Start
+
+	Variable.Local.bContinue.Declare(Boolean, True)
+
+	Function.Intrinsic.Control.CallSub(GetChangesExist)
+	Function.Intrinsic.Control.If(Variable.Args.bChangesExist)
+		Function.Intrinsic.Control.CallSub(ConfirmAbandonChanges)
+		Variable.Local.bContinue.Set(Variable.Args.bAbandonChanges)
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.If(Variable.Local.bContinue)
+		Function.Intrinsic.Control.CallSub(ClearInputFields)
+		Function.Intrinsic.Control.CallSub(GetSelectedRowIndex)
+		Function.Intrinsic.Control.CallSub(ShowUpdateControls)
+		Function.Intrinsic.Control.CallSub(PopulateFieldsFromTable, iRowIndex, Variable.Args.iRowIndex)
+		Variable.Global.iSelectedRowIndex.Set(Variable.Args.iRowIndex)
+	Function.Intrinsic.Control.EndIf
+Program.Sub.EditSelectedRow.End
+
+Program.Sub.GetChangesExist.Start
+'@ Return bChangesExist	: Boolean
+
+	'bChangesExist
+	Variable.Local.bChangesExist.Declare(Boolean, False)
+
+	Function.Intrinsic.Control.If(Variable.Screen.F_Main!cmdUpdateRecord.visible)
+		Function.Intrinsic.Control.CallSub(GetFieldsMatchRowData)
+		Variable.Local.bChangesExist.Set(Variable.Args.bFieldsMatchRowData.Not)
+	
+	Function.Intrinsic.Control.Else
+		Function.Intrinsic.Control.CallSub(GetInputFieldsAreEmpty)
+		Variable.Local.bChangesExist.set(Variable.Args.bInputFieldsAreEmpty.Not)
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Variable.AddRV("bChangesExist", Variable.Local.bChangesExist)
+Program.Sub.GetChangesExist.End
+
+Program.Sub.ConfirmAbandonChanges.Start
+'@ Return bAbandonChanges	: Boolean
+
+	'iResponseValue Yes: 6, No: 7
+	Variable.Local.iResponseValue.Declare(Long)
+	Function.Intrinsic.UI.MsgBox ("Abandon uncommitted changes?", "Uncommited Changes", 4, Variable.Local.iResponseValue)
+	
+	'bAbandonChanges
+	Variable.Local.bAbandonChanges.Declare(Boolean, False)
+	Function.Intrinsic.Control.If(Variable.Local.iResponseValue, =, 6)
+		Variable.Local.bAbandonChanges.Set(True)
+	Function.Intrinsic.Control.EndIf
+
+	'Return
+	Function.Intrinsic.Variable.AddRV("bAbandonChanges", Variable.Local.bAbandonChanges)
+Program.Sub.ConfirmAbandonChanges.End
+
+Program.Sub.ClearInputFields.Start
+	'Gui.F_Main.lblRecN.Caption("")
+	Gui.F_Main.txtReason.Text("")
+	Gui.F_Main.txtPoints.Text("")
+	'Gui.F_Main.txtNotes.Text("")
+	'Gui.F_Main.dtpDate.Value(Variable.Ambient.Date)
+
+Program.Sub.ClearInputFields.End
+
+Program.Sub.ShowUpdateControls.Start
+
+	Function.Intrinsic.Control.CallSub(ToggleAddUpdateControls, bUpdating, True)
+Program.Sub.ShowUpdateControls.End
+
+Program.Sub.PopulateFieldsFromTable.Start
+'@ Arg iRowIndex	: Long
+
+	Function.Intrinsic.Control.CallSub(GetRowValues, iRowIndex, Variable.Args.iRowIndex)
+
+	Gui.F_Main.txtNotes.Text(Variable.Args.sNotes)
+	Gui.F_Main.txtReason.Text(Variable.Args.sReason)
+	Gui.F_Main.txtPoints.Text(Variable.Args.fPoints)
+	Gui.F_Main.dtpDate.Value(Variable.Args.dDate)
+Program.Sub.PopulateFieldsFromTable.End
+
+Program.Sub.GetFieldsMatchRowData.Start
+'@ Return bFieldsMatchRowData	: Boolean
+
+	'bFieldsMatch
+	Variable.Local.bFieldsMatch.Declare(Boolean, False)
+	Function.Intrinsic.Variable.AddRV("bFieldsMatchRowData", Variable.Local.bFieldsMatch)
+
+	Function.Intrinsic.Control.CallSub(GetSelectedRowData)
+
+	Function.Intrinsic.Control.If(Variable.Screen.F_Main!txtNotes.Text, !=, Variable.Args.sNotes)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.If(Variable.Screen.F_Main!txtReason.Text, !=, Variable.Args.sReason)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.If(Variable.Screen.F_Main!txtPoints.Text.Float, !=, Variable.Args.fPoints)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.If(Variable.Screen.F_Main!dtpDate.Value, !=, Variable.Args.dDate)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Variable.Local.bFieldsMatch.Set(True)
+	Function.Intrinsic.Variable.AddRV("bFieldsMatchRowData", Variable.Local.bFieldsMatch)
+Program.Sub.GetFieldsMatchRowData.End
+
+Program.Sub.GetInputFieldsAreEmpty.Start
+'@ Return bInputFieldsAreEmpty	: Boolean
+
+	'bInputFieldsAreEmpty
+	Variable.Local.bInputFieldsAreEmpty.Declare(Boolean)
+	Variable.Local.bInputFieldsAreEmpty.Set(False)
+	Function.Intrinsic.Variable.AddRV("bInputFieldsAreEmpty", Variable.Local.bInputFieldsAreEmpty)
+
+	Function.Intrinsic.Control.IF(Variable.Screen.F_Main!txtPoints.Text.IsNullOrWhitespace, =, False)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.IF(Variable.Screen.F_Main!txtReason.Text.IsNullOrWhitespace, =, False)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.IF(Variable.Screen.F_Main!txtNotes.Text.IsNullOrWhitespace, =, False)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Variable.Local.bInputFieldsAreEmpty.Set(True)
+	Function.Intrinsic.Variable.AddRV("bInputFieldsAreEmpty", Variable.Local.bInputFieldsAreEmpty)
+Program.Sub.GetInputFieldsAreEmpty.End
+
+Program.Sub.GetRowValues.Start
+'@ Arg iRowIndex	: Long
+'@ Returns
+
+	Function.Intrinsic.Variable.AddRV("iRecordId", Variable.DataTable.dtHistory(Variable.Args.iRowIndex).RecordId!FieldValLong)
+	Function.Intrinsic.Variable.AddRV("sReason", Variable.DataTable.dtHistory(Variable.Args.iRowIndex).reason!FieldValString)
+	Function.Intrinsic.Variable.AddRV("fPoints", Variable.DataTable.dtHistory(Variable.Args.iRowIndex).Points!FieldValFloat)
+	Function.Intrinsic.Variable.AddRV("sNotes", Variable.DataTable.dtHistory(Variable.Args.iRowIndex).notes!FieldValString)
+	Function.Intrinsic.Variable.AddRV("dDate", Variable.DataTable.dtHistory(Variable.Args.iRowIndex).DateDisplayed!FieldValPervasiveDate)
+
+Program.Sub.GetRowValues.End
+
+Program.Sub.GetSelectedRowData.Start
+'@ Returns
+
+	Variable.Local.sNotes.Declare(String)
+	Gui.F_Main.gsgcHistory.GetCellValueByColumnName(gvHistory, "notes", Variable.Global.iSelectedRowIndex, Variable.Local.sNotes)
+	
+	Variable.Local.sReason.Declare(String)
+	Gui.F_Main.gsgcHistory.GetCellValueByColumnName(gvHistory, "reason", Variable.Global.iSelectedRowIndex, Variable.Local.sReason)
+	
+	Variable.Local.fPoints.Declare(Float)
+	Gui.F_Main.gsgcHistory.GetCellValueByColumnName(gvHistory, "points", Variable.Global.iSelectedRowIndex, Variable.Local.fPoints)
+	
+	Variable.Local.dDate.Declare(Date)
+	Gui.F_Main.gsgcHistory.GetCellValueByColumnName(gvHistory, "DateDisplayed", Variable.Global.iSelectedRowIndex, Variable.Local.dDate)
+	
+	'Return
+	Function.Intrinsic.Variable.AddRV("sNotes", Variable.Local.sNotes)
+	Function.Intrinsic.Variable.AddRV("sReason", Variable.Local.sReason)
+	Function.Intrinsic.Variable.AddRV("fPoints", Variable.Local.fPoints.Float)
+	Function.Intrinsic.Variable.AddRV("dDate", Variable.Local.dDate)
+Program.Sub.GetSelectedRowData.End
+
+Program.Sub.SaveHistoryTable.Start
+	Function.Intrinsic.Control.Try
+		Function.Intrinsic.Control.CallSub(OpenCompanyDB)
+		Function.Data.DataTable.SaveToDB(dtHistory, "CompanyDB", "GAB_PAY_PTO_MAIN", "RecordId", 7, "RecordId@!@id*!*Reason@!@Reason*!*Points@!@Points*!*notes@!@notes*!*DateDisplayed@!@date_d*!*userid@!@userid*!*EmployeeNumber@!@Employee*!*EmployeeName@!@Employee_Name*!*DateCreated@!@DATE_CREATED")
+		Function.Intrinsic.Control.CallSub(CloseCompanyDB)
+		
+		Function.Data.DataTable.AcceptChanges(dtHistory)
+	
+	Function.Intrinsic.Control.Catch
+		Function.Intrinsic.Control.CallSub(ShowErrorAndEnd)
+	Function.Intrinsic.Control.EndTry
+Program.Sub.SaveHistoryTable.End
+
+Program.Sub.ReloadGsgcHistory.Start
+	
+	Function.Intrinsic.Control.CallSub(GetEmployeeNumberFromScreen)
+	
+	Gui.F_Main.gsgcHistory.SuspendLayout()
+	Function.Intrinsic.Control.CallSub(ReloadDtHistory, "sEmployeeNumber", Variable.Args.sEmployeeNumber)
+	Gui.F_Main.gsgcHistory.ResumeLayout()
+Program.Sub.ReloadGsgcHistory.End
+
+Program.Sub.GetEmployeeNumberFromScreen.Start
+'@ Return sEmployeeNumber	: String
+	Function.Intrinsic.Variable.AddRV("sEmployeeNumber", Variable.Screen.F_Main!txtEmp.Text)
+Program.Sub.GetEmployeeNumberFromScreen.End
+
+Program.Sub.GetUncommittedChangesExist.Start
+'@ Return bUncommittedChangesExist	: Boolean
+	
+	'bUncommittedChangesExist
+	Variable.Local.bUncommittedChangesExist.Declare(Boolean, False)
+
+	Function.Intrinsic.Control.CallSub(GetChangesExist)
+	Function.Intrinsic.Control.If(Variable.Args.bChangesExist)
+		Function.Intrinsic.Control.CallSub(ConfirmAbandonChanges)
+		'If abandoning changes, there are no uncommitted changes
+		Variable.Local.bUncommittedChangesExist.Set(Variable.Args.bAbandonChanges.Not)
+	Function.Intrinsic.Control.EndIf
+	
+	Function.Intrinsic.Variable.AddRV("bUncommittedChangesExist", Variable.Local.bUncommittedChangesExist)
+Program.Sub.GetUncommittedChangesExist.End
+
+Program.Sub.SelectEmployeeFromBrowser.Start
+'@ Return sSelection	: String
+
+	Variable.Local.sSelection.Declare(String)
+	Function.Intrinsic.UI.Browser(50,"",Variable.Local.sSelection)
+	
+	Function.Intrinsic.Variable.AddRV("sSelection", Variable.Local.sSelection)
+Program.Sub.SelectEmployeeFromBrowser.End
+
+Program.Sub.SetEmployeeNameNumberFromSelection.Start
+'@ Arg sSelection	: String = *!* delimeted string of number*!*name
+	
+	Function.Intrinsic.Control.CallSub(GetEmployeeNameNumberFromSelection, "sSelection", Variable.Args.sSelection)
+
+	Gui.F_Main.txtEmp.Text(Variable.Args.sEmployeeNumber)
+	Gui.F_Main.txtEmpName.Text(Variable.Args.sEmployeeName)
+Program.Sub.SetEmployeeNameNumberFromSelection.End
+
+Program.Sub.GetEmployeeNameNumberFromSelection.Start
+'@ Arg sSelection	: String = *!* delimeted string of number*!*name
+'@ Return sEmployeeNumber	: String = Left padded with zero's
+'@ Return sEmployeeName	: String
+
+	'sTemp
+	Variable.Local.sTemp.Declare(String)
+	Function.Intrinsic.String.Split(V.Args.sSelection,"*!*",Variable.Local.sTemp)
+
+	'Return
+	Function.Intrinsic.Variable.AddRV("sEmployeeNumber", Variable.Local.sTemp(0))
+	Function.Intrinsic.Variable.AddRV("sEmployeeName", Variable.Local.sTemp(1))
+Program.Sub.GetEmployeeNameNumberFromSelection.End
+
+Program.Sub.SelectReasonFromBrowser.Start
+'@ Return sSelection	: String
+
+	'sTitles	
+	Variable.Local.sTitles.Declare(String)
+	Function.Intrinsic.String.Split("Reason*!*Points", "*!*", Variable.Local.sTitles)
+
+	'iWidths	
+	Variable.Local.iWidths.Declare(Long)
+	Function.Intrinsic.String.Split("3000*!*2800", "*!*", Variable.Local.iWidths)
+
+	'sSelection	
+	Variable.Local.sSelection.Declare(String)
+
+	Function.Intrinsic.Control.CallSub(OpenCompanyDB)
+	Function.Intrinsic.UI.Browser("Select a Reason", CompanyDB, "Select rtrim(REASON) as REASON, POINTS FROM GAB_PAY_PTO_REA ORDER BY REASON", Variable.Local.sTitles, Variable.Local.iWidths, 5800, 5800, Variable.Local.sSelection)
+	Function.Intrinsic.Control.CallSub(CloseCompanyDB)
+
+	'Return
+	Function.Intrinsic.Variable.AddRV("sSelection", Variable.Local.sSelection)
+Program.Sub.SelectReasonFromBrowser.End
+
+Program.Sub.GetReasonPointsFromSelection.Start
+'@ Arg sSelection	: String = *!* delimeted string of reason*!*points
+'@ Return sReason	: String
+'@ Return fPoints	: Float
+
+	'sTemp
+	Variable.Local.sTemp.Declare(String)
+	Function.Intrinsic.String.Split(V.Args.sSelection,"*!*",Variable.Local.sTemp)
+	
+	'Return
+	Function.Intrinsic.Variable.AddRV("sReason", Variable.Local.sTemp(0))
+	Function.Intrinsic.Variable.AddRV("fPoints", Variable.Local.sTemp(1).Float)
+Program.Sub.GetReasonPointsFromSelection.End
+
+Program.Sub.GetEmployeeReviewReportId.Start
+'@ Return iEmployeeReviewReportId	: Long
+
+	'sReportName
+	Variable.Local.sReportName.Declare(String, "PPT_4659_EmployeePointsSummary.rpt")
+	
+	'sReportId
+	Variable.Local.sReportId.Declare(String)
+	Function.Global.BI.GetIDFromName(Variable.Local.sReportName, Variable.Local.sReportId)
+	
+	'Return
+	Function.Intrinsic.Variable.AddRV("iEmployeeReviewReportId", Variable.Local.sReportId.Long)
+Program.Sub.GetEmployeeReviewReportId.End
+
+Program.Sub.PrintSelectedEmployeeReport.Start
+'@ Arg iReportId	: String
+
+	'sArgumentNames
+	Variable.Local.sArgumentNames.Declare(String)
+	Variable.Local.sArgumentNames(0).Set("Employee")
+	
+	'sArgumentValues
+	Variable.Local.sArgumentValues.Declare(String)
+	Variable.Local.sArgumentValues(0).Set(V.Screen.F_Main!txtEmp.Text)
+	
+	'PrintReport requires arrays for argument names and values
+	Function.Global.BI.PrintReport(Variable.Args.iReportId, 16, Variable.Local.sArgumentNames, Variable.Local.sArgumentValues, False)
+Program.Sub.PrintSelectedEmployeeReport.End
+
+Program.Sub.AlertReportIdNotFound.Start
+'@ Arg sReportName	: String
+
+	Variable.Local.sMessage.Declare(String, "Report ID not found for:   {0}")
+	Function.Intrinsic.String.Build(Variable.Local.sMessage, Variable.Args.sReportName, Variable.Local.sMessage)
+	
+	Function.Intrinsic.UI.Msgbox(Variable.Local.sMessage, "Report Maintenance")
+Program.Sub.AlertReportIdNotFound.End
+
+Program.Sub.GetInputFieldsAreValid.Start
+'@ Return bInputFieldsAreValid	: Boolean
+
+	'bInputFieldsAreValid
+	Variable.Local.bInputFieldsAreValid.Declare(Boolean)
+	Variable.Local.bInputFieldsAreValid.Set(False)
+	Function.Intrinsic.Variable.AddRV("bInputFieldsAreValid", Variable.Local.bInputFieldsAreValid)
+
+	'points must be number or blank
+	Function.Intrinsic.Control.CallSub(GetPointsIsNumeric)
+	Function.Intrinsic.Control.If(Variable.Args.bPointsIsNumeric.Not)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	'reason cant be blank
+	Function.Intrinsic.Control.CallSub(GetReasonIsEmptyOrWhitespace)
+	Function.Intrinsic.Control.If(Variable.Args.bReasonIsEmptyOrWhitespace)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+	
+	'employee name cant be blank
+	Function.Intrinsic.Control.CallSub(GetEmployeeNameIsEmptyOrWhitespace)
+	Function.Intrinsic.Control.If(Variable.Args.bEmployeeNameIsEmptyOrWhitespace)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+	
+	'employee number cant be blank
+	Function.Intrinsic.Control.CallSub(GetEmployeeNumberIsEmptyOrWhitespace)
+	Function.Intrinsic.Control.If(Variable.Args.bEmployeeNumberIsEmptyOrWhitespace)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf	
+
+	'return
+	Variable.Local.bInputFieldsAreValid.Set(True)
+	Function.Intrinsic.Variable.AddRV("bInputFieldsAreValid", Variable.Local.bInputFieldsAreValid)
+Program.Sub.GetInputFieldsAreValid.End
+
+Program.Sub.GetPointsIsNumeric.Start
+'@ Return bPointsIsNumeric	: Boolean
+
+	Variable.Local.bPointsIsNumeric.Declare(Boolean, False)
+
+	Function.Intrinsic.Math.IsNumeric(Variable.Screen.F_Main!txtPoints.Text, Variable.local.bPointsIsNumeric) 
+
+	Function.Intrinsic.Control.IIF(Variable.Screen.F_Main!txtPoints.Text, =, "", True, Variable.local.bPointsIsNumeric, Variable.Local.bPointsIsNumeric)
+
+	Function.Intrinsic.Variable.AddRV("bPointsIsNumeric", Variable.Local.bPointsIsNumeric)
+Program.Sub.GetPointsIsNumeric.End
+
+Program.Sub.GetReasonIsEmptyOrWhitespace.Start
+'@ Return bReasonIsEmptyOrWhitespace	: Boolean
+
+	'bReasonIsEmptyOrWhitespace
+	Variable.Local.bReasonIsEmptyOrWhitespace.Declare(Boolean)
+	Function.Intrinsic.Control.CallSub(GetFieldIsEmptyOrWhitespace, "sFormName", "F_Main", "sFieldName", "txtReason")
+	Variable.Local.bReasonIsEmptyOrWhitespace.Set(Variable.Args.bFieldIsEmptyOrWhitespace)
+	
+	'Return
+	Function.Intrinsic.Variable.AddRV("bReasonIsEmptyOrWhitespace", Variable.Local.bReasonIsEmptyOrWhitespace)
+Program.Sub.GetReasonIsEmptyOrWhitespace.End
+
+Program.Sub.GetEmployeeNameIsEmptyOrWhitespace.Start
+'@ Return bEmployeeNameIsEmptyOrWhitespace	: Boolean
+
+	'bEmployeeNameIsEmptyOrWhitespace
+	Variable.Local.bEmployeeNameIsEmptyOrWhitespace.Declare(Boolean)
+	Function.Intrinsic.Control.CallSub(GetFieldIsEmptyOrWhitespace, "sFormName", "F_Main", "sFieldName", "txtEmpName")
+	Variable.Local.bEmployeeNameIsEmptyOrWhitespace.Set(Variable.Args.bFieldIsEmptyOrWhitespace)
+	
+	'Return
+	Function.Intrinsic.Variable.AddRV("bEmployeeNameIsEmptyOrWhitespace", Variable.Local.bEmployeeNameIsEmptyOrWhitespace)
+Program.Sub.GetEmployeeNameIsEmptyOrWhitespace.End
+
+Program.Sub.GetEmployeeNumberIsEmptyOrWhitespace.Start
+'@ Return bEmployeeNumberIsEmptyOrWhitespace	: Boolean
+
+	'bEmployeeNumberIsEmptyOrWhitespace
+	Variable.Local.bEmployeeNumberIsEmptyOrWhitespace.Declare(Boolean)
+	Function.Intrinsic.Control.CallSub(GetFieldIsEmptyOrWhitespace, "sFormName", "F_Main", "sFieldName", "txtEmp")
+	Variable.Local.bEmployeeNumberIsEmptyOrWhitespace.Set(Variable.Args.bFieldIsEmptyOrWhitespace)
+	
+	'Return
+	Function.Intrinsic.Variable.AddRV("bEmployeeNumberIsEmptyOrWhitespace", Variable.Local.bEmployeeNumberIsEmptyOrWhitespace)
+Program.Sub.GetEmployeeNumberIsEmptyOrWhitespace.End
+
+Program.Sub.GetFieldIsEmptyOrWhitespace.Start
+'@ Arg sFormName	: String
+'@ Arg sFieldName	: String
+'@ Return bFieldIsEmptyOrWhitespace	: Boolean
+	
+	'bFieldIsEmptyOrWhitespace
+	Variable.Local.bFieldIsEmptyOrWhitespace.Declare(Boolean, True)
+	Variable.Local.bFieldIsEmptyOrWhitespace.Set(Variable.Screen.[Variable.Args.sFormName]![Variable.Args.sFieldName].Text.IsNullOrWhitespace)
+
+	Function.Intrinsic.Variable.AddRV("bFieldIsEmptyOrWhitespace", Variable.Local.bFieldIsEmptyOrWhitespace)
+Program.Sub.GetFieldIsEmptyOrWhitespace.End
+
+Program.Sub.AddRowFromInputFields.Start
+	Function.Data.DataTable.AddRow(dtHistory, DateDisplayed, Variable.Screen.F_Main!dtpDate.Value.Date, REASON, Variable.Screen.F_Main!txtReason.Text, POINTS, Variable.Screen.F_Main!txtPoints.Text.Float, NOTES, Variable.Screen.F_Main!txtNotes.Text, USERID, Variable.Caller.User, EmployeeName, Variable.Screen.F_Main!txtEmpName.Text, EmployeeNumber, Variable.Screen.F_Main!txtEmp.Text, DateCreated, Variable.Ambient.Now)
+
+Program.Sub.AddRowFromInputFields.End
+
+Program.Sub.UpdateRowFromInputFields.Start
+'@ Arg iRowIndex	: Long
+
+	Gui.F_Main.gsgcHistory.SetCellValueByColumnName(gvHistory, "notes", Variable.Args.iRowIndex, Variable.Screen.F_Main!txtNotes.Text)
+	Gui.F_Main.gsgcHistory.SetCellValueByColumnName(gvHistory, "reason", Variable.Args.iRowIndex, Variable.Screen.F_Main!txtReason.Text)
+	Gui.F_Main.gsgcHistory.SetCellValueByColumnName(gvHistory, "points", Variable.Args.iRowIndex, Variable.Screen.F_Main!txtPoints.Text)
+	Gui.F_Main.gsgcHistory.SetCellValueByColumnName(gvHistory, "DateDisplayed", Variable.Args.iRowIndex, Variable.Screen.F_Main!dtpDate.Value)
+Program.Sub.UpdateRowFromInputFields.End
+
+Program.Sub.OpenCommonDB.Start
+	Function.Intrinsic.Control.CallSub(OpenConnection, "sConnectionName", "CommonDB")
+Program.Sub.OpenCommonDB.End
+
+Program.Sub.OpenCompanyDB.Start
+	Function.Intrinsic.Control.CallSub(OpenConnection, "sConnectionName", "CompanyDB")
+Program.Sub.OpenCompanyDB.End
+
+Program.Sub.OpenConnection.Start
+'@ Arg sConnectionName
+
+	Function.Intrinsic.Control.SelectCase(Variable.Args.sConnectionName.LCase)
+		'Common
+		Function.Intrinsic.Control.Case("commondb")
+			Function.ODBC.Connection!CommonDB.OpenCommonConnection
+		'Company
+		Function.Intrinsic.Control.Case("companydb")
+			Function.ODBC.Connection!CompanyDB.OpenCompanyConnection
+		'Else
+		Function.Intrinsic.Control.CaseElse		
+	Function.Intrinsic.Control.EndSelect
+Program.Sub.OpenConnection.End
+
+Program.Sub.CloseCommonDB.Start
+	Function.Intrinsic.Control.CallSub(CloseConnection, "sConnectionName", "CommonDB")
+Program.Sub.CloseCommonDB.End
+
+Program.Sub.CloseCompanyDB.Start
+	Function.Intrinsic.Control.CallSub(CloseConnection, "sConnectionName", "CompanyDB")
+Program.Sub.CloseCompanyDB.End
+
+Program.Sub.CloseConnection.Start
+'@ Arg sConnectionName
+
+	Function.Intrinsic.Control.SelectCase(Variable.Args.sConnectionName.LCase)
+		'Common
+		Function.Intrinsic.Control.Case("commondb")
+			Function.ODBC.Connection!CommonDB.Close
+		'Company
+		Function.Intrinsic.Control.Case("companydb")
+			Function.ODBC.Connection!CompanyDB.Close
+		'Else
+		Function.Intrinsic.Control.CaseElse		
+	Function.Intrinsic.Control.EndSelect
+Program.Sub.CloseConnection.End
+
+Program.Sub.GetDatatableContainsValue.Start
+'@ Arg sDtName	: String
+'@ Arg sColumnName	: String
+'@ Arg xValue	: Unspecified = The value being searched for
+'@ Return bDatatableContainsValue	: Boolean
+
+	Variable.Local.sTemp.Declare(String)
+
+	'sExpression
+	Variable.Local.sExpression.Declare(String, "{0} = '{1}'")
+	Function.Intrinsic.String.Build(Variable.Local.sExpression, Variable.Args.sColumnName, Variable.Args.xValue, Variable.Local.sExpression)
+
+	'bDatatableContainsValue
+	Variable.Local.bDatatableContainsValue.Declare(Boolean, True)
+	Function.Data.DataTable.Select(Variable.Args.sDtName, Variable.Local.sExpression, Variable.Local.sTemp)
+	Function.Intrinsic.Control.If(Variable.Local.sTemp.IsNoReturn)
+		Variable.Local.bDatatableContainsValue.Set(False)
+	Function.Intrinsic.Control.EndIf
+
+	'Return
+	Function.Intrinsic.Variable.AddRV("bDatatableContainsValue", Variable.Local.bDatatableContainsValue)
+Program.Sub.GetDatatableContainsValue.End
+
+Program.Sub.ShowErrorAndEnd.Start
+
+	'sError
+	V.Local.sError.Declare(String)	
+	F.Intrinsic.String.Build("Project: {0}{1}{1}Subroutine: {2}{1}Error Occurred {3} with description {4}{1}{1}GAB Version: {5}", V.Ambient.ScriptPath, V.Ambient.Newline, V.Ambient.SubroutineCalledFrom, V.Ambient.ErrorNumber, V.Ambient.ErrorDescription, V.Ambient.GABVersion, V.Local.sError)
+	
+	'Show error dialog
+	F.Intrinsic.UI.MsgBox(V.Local.sError)
+	
+	'End Program
+	F.Intrinsic.Control.End
+Program.Sub.ShowErrorAndEnd.End
+
+Program.Sub.Comments.Start
+${$5$}$2.0.0.0$}$2
+${$6$}$rrodriguez$}$20210401153745841$}$YnvOFTUOxTrnxbSzMvfBmnrP7dtKqN6ZKEdpzIv886oe1R3Vf4HOejOdluSJGd8wJ/fjTSukh0by7TFlMiCjhw==
+Program.Sub.Comments.End
