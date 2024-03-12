@@ -1,0 +1,364 @@
+﻿Program.Sub.ScreenSU.Start
+	Function.Intrinsic.Control.CallSub(CreateFMain)
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+	'Include
+	Program.External.Include.Library("PPT_4659_Maintenance.lib")
+
+	'Globals
+	Variable.Global.sEmp.Declare(String)
+	Variable.Global.iSelectedRowIndex.Declare(Long)
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+	Variable.Local.bEditPrivileges.Declare(Boolean, True)
+
+	Function.Intrinsic.Control.If(V.Caller.Hook,=,29560)
+		V.Passed.000204.Set("Points")
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.If(V.Caller.Hook,=,29591)
+		Variable.Local.bEditPrivileges.Set(False)
+		Function.Intrinsic.Control.CallSub(ReloadDtHistory, "sEmployeeNumber", Variable.Global.sEmp)
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.CallSub(PrepareView, "bEditable", Variable.Local.bEditPrivileges)
+	Gui.F_MAIN..Show
+
+Program.Sub.Main.End
+
+Program.Sub.CreateFMain.Start
+
+	'F_Main
+	Gui.F_Main..create
+	Gui.F_Main..Caption("Employee Points Screen")
+	Gui.F_Main..Size(9195,9045)
+	Gui.F_Main..MinX(9195)
+	Gui.F_Main..MinY(9285)
+	Gui.F_Main..Position(1200,1200)
+	Gui.F_Main..Event(UnLoad,F_Main_Unload)
+	Gui.F_Main..forecolor(0)
+	Gui.F_Main..fontstyle(,,,)
+	Gui.F_Main..BackColor(-2147483633)
+	Gui.F_Main..mousepointer(0)
+
+	'cmdPrintRecords
+	Gui.F_Main.cmdPrintRecords.Create(Button)
+	Gui.F_Main.cmdPrintRecords.Size(1320,360)
+	Gui.F_Main.cmdPrintRecords.Position(180,8130)
+	Gui.F_Main.cmdPrintRecords.Caption("Print Report")
+	Gui.F_Main.cmdPrintRecords.DefaultValue("")
+	Gui.F_Main.cmdPrintRecords.Anchor(6)
+	Gui.F_Main.cmdPrintRecords.Event(Click,cmdPrintRecords_Click)
+
+	'cmdAddRecord
+	Gui.F_Main.cmdAddRecord.Create(Button)
+	Gui.F_Main.cmdAddRecord.Size(1320,360)
+	Gui.F_Main.cmdAddRecord.Position(180,2235)
+	Gui.F_Main.cmdAddRecord.Caption("Add")
+	Gui.F_Main.cmdAddRecord.Visible(True)
+	Gui.F_Main.cmdAddRecord.Event(Click, cmdAddRecord_Click)
+
+	'cmdUpdateRecord
+	Gui.F_Main.cmdUpdateRecord.Create(Button)
+	Gui.F_Main.cmdUpdateRecord.Size(1320,360)
+	Gui.F_Main.cmdUpdateRecord.Position(180,2235)
+	Gui.F_Main.cmdUpdateRecord.Caption("Update")
+	Gui.F_Main.cmdUpdateRecord.Visible(False)
+	Gui.F_Main.cmdUpdateRecord.Event(Click, cmdUpdateRecord_Click)
+
+	'cmdCancelUpdate
+	Gui.F_Main.cmdCancelUpdate.Create(Button)
+	Gui.F_Main.cmdCancelUpdate.Size(1320,360)
+	Gui.F_Main.cmdCancelUpdate.Position(1580,2235)
+	Gui.F_Main.cmdCancelUpdate.Caption("Cancel")
+	Gui.F_Main.cmdCancelUpdate.Visible(False)
+	Gui.F_Main.cmdCancelUpdate.Event(Click, cmdCancelUpdate_Click)
+
+	'gsgcHistory
+	Function.Intrinsic.Control.CallSub(CreateGsgcHistory)
+
+	'txtNotes
+	Gui.F_Main.txtNotes.Create(TextboxM)
+	Gui.F_Main.txtNotes.Size(8580,945)
+	Gui.F_Main.txtNotes.Position(180,1140)
+	Gui.F_Main.txtNotes.DefaultValue("Notes")
+	Gui.F_Main.txtNotes.maxLength(1000)
+
+	'lblTotal
+	Gui.F_Main.lblTotal.Create(Label,"Total: ",True,1800,255,0,6960,8190,True,1,"Arial",8,-2147483633,0)
+	Gui.F_Main.lblTotal.Anchor(10)
+
+	'lblEmp
+	Gui.F_Main.lblEmp.Create(Label,"Employee",True,840,255,0,180,300,True,0,"Arial",8,-2147483633,0)
+
+	'txtEmpName
+	Gui.F_Main.txtEmpName.Create(TextBox,"",True,2850,300,0,180,630,True,0,"Arial",8,-2147483643,1)
+	Gui.F_Main.txtEmpName.DefaultValue("Name")
+	Gui.F_Main.txtEmpName.Enabled(False)
+
+	'txtEmp
+	Gui.F_Main.txtEmp.Create(TextBox,"",True,960,300,0,3165,630,True,0,"Arial",8,-2147483643,1)
+	Gui.F_Main.txtEmp.DefaultValue("ID")
+	Gui.F_Main.txtEmp.Enabled(False)
+
+	'cmdBrowseEmployees
+	Gui.F_Main.cmdBrowseEmployees.Create(Button)
+	Gui.F_Main.cmdBrowseEmployees.Size(360,360)
+	Gui.F_Main.cmdBrowseEmployees.Position(1035,180)
+	Gui.F_Main.cmdBrowseEmployees.Caption("^")
+	Gui.F_Main.cmdBrowseEmployees.Event(Click,cmdBrowseEmployees_Click)
+
+	'lblReason
+	Gui.F_Main.lblReason.Create(Label,"Reason",True,735,255,0,5460,300,True,0,"Arial",8,-2147483633,0)
+
+	'txtReason
+	Gui.F_Main.txtReason.Create(TextBox,"",True,2295,300,0,5460,630,True,0,"Arial",8,-2147483643,1)
+	Gui.F_Main.txtReason.defaultvalue("Reason")
+	Gui.F_Main.txtReason.Enabled(False)
+
+	'cmdBrowseReason
+	Gui.F_Main.cmdBrowseReason.Create(Button)
+	Gui.F_Main.cmdBrowseReason.Size(360,360)
+	Gui.F_Main.cmdBrowseReason.Position(6210,180)
+	Gui.F_Main.cmdBrowseReason.Caption("^")
+	Gui.F_Main.cmdBrowseReason.Event(Click,cmdBrowseReason_Click)
+
+	'dtpDate
+	Gui.F_Main.dtpDate.Create(DatePicker)
+	Gui.F_Main.dtpDate.Size(1935,360)
+	Gui.F_Main.dtpDate.Position(6825,2235)
+
+	'txtPoints
+	Gui.F_Main.txtPoints.Create(TextBox,"",True,870,300,0,7890,630,True,0,"Arial",8,-2147483643,1)
+	Gui.F_Main.txtPoints.defaultvalue("Points")
+
+Program.Sub.CreateFMain.End
+
+Program.Sub.CreateGsgcHistory.Start
+	Function.Intrinsic.Control.CallSub(CreateHistoryTable)
+	Function.Intrinsic.Control.CallSub(CreateHistoryView)
+
+	Gui.F_Main.gsgcHistory.Create(GsGridControl)
+	Gui.F_Main.gsgcHistory.Size(8700,4860)
+	Gui.F_Main.gsgcHistory.Position(180,3075)
+	Gui.F_Main.gsgcHistory.Anchor(15)
+	Gui.F_Main.gsgcHistory.Event(RowClick, gsgcHistory_RowCellClick)
+
+	'Add gridview
+	Gui.F_Main.gsgcHistory.AddGridviewFromDataview("gvHistory", dtHistory, dvHistory) 
+	Gui.F_Main.gsgcHistory.MainView(gvHistory)
+
+	Function.Intrinsic.Control.CallSub(SetGsgcHistoryProperties)
+
+	'Add context menu
+	Function.Intrinsic.Control.CallSub(CreateHistoryContextMenu)
+	GUI.F_Main.gsgcHistory.ContextMenuAttach("ctxmHistory")
+Program.Sub.CreateGsgcHistory.End
+
+Program.Sub.CreateHistoryTable.Start
+	Function.Intrinsic.Control.CallSub(GetEmployeeHistoryQuery, sEmployeeNumber, "")
+	
+	Function.Intrinsic.Control.CallSub(OpenCompanyDB)
+	Function.Intrinsic.Control.CallSub(BuildDataTable, sDtName, "dtHistory", sConName, "CompanyDB", sQuery, Variable.Args.sEmployeeHistoryQuery)
+	Function.Intrinsic.Control.CallSub(CloseCompanyDB)
+Program.Sub.CreateHistoryTable.End
+
+Program.Sub.CreateHistoryView.Start
+
+	Function.Data.DataView.Create(dtHistory, "dvHistory")
+	Function.Data.DataView.SetSort(dtHistory, dvHistory, "DateDisplayed desc")
+Program.Sub.CreateHistoryView.End
+
+Program.Sub.SetGsgcHistoryProperties.Start
+
+	'GridView Properties
+	GUI.F_Main.gsgcHistory.SetGridViewProperty(gvHistory, "ReadOnly", True)
+	GUI.F_Main.gsgcHistory.SetGridViewProperty(gvHistory, "Editable", False)
+	GUI.F_Main.gsgcHistory.SetGridViewProperty(gvHistory, "MultiSelect", False)
+
+	'Column Properties
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "DateDisplayed", Caption, "Date")
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "DateDisplayed", MaxWidth, 75)
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "DateDisplayed", "DisplayCustomDatetime", "d")
+
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "Reason", Caption, "Reason")
+
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "Points", Caption, "Points")
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "Points", MaxWidth, 60)
+
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "Notes", Caption, "Notes")
+	
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "RecordId", Caption, "#")
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "RecordId", MaxWidth, 60)
+	
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "UserId", visible, false)
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "DateCreated", visible, false)
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "EmployeeNumber", visible, false)
+	GUI.F_Main.gsgcHistory.SetColumnProperty(gvHistory, "EmployeeName", visible, false)
+
+Program.Sub.SetGsgcHistoryProperties.End
+
+Program.Sub.CreateHistoryContextMenu.Start
+	GUI.F_Main..ContextMenuCreate("ctxmHistory")
+
+	'ctxDelete
+	GUI.F_Main..ContextMenuAddItem("ctxmHistory", "ctxDelete", 0, "Delete")
+	GUI.F_Main..ContextMenuSetItemEventHandler("ctxmHistory", "ctxDelete", ctxmHistory_Click)
+
+	'ctxEdit
+	GUI.F_Main..ContextMenuAddItem("ctxmHistory", "ctxEdit", 0, "Edit")
+	GUI.F_Main..ContextMenuSetItemEventHandler("ctxmHistory", "ctxEdit", ctxmHistory_Click)
+
+	'ctxSave
+	GUI.F_Main..ContextMenuAddItem("ctxmHistory", "ctxSave", 0, "Save")
+	GUI.F_Main..ContextMenuSetItemEventHandler("ctxmHistory", "ctxSave", ctxmHistory_Click)
+
+Program.Sub.CreateHistoryContextMenu.End
+
+Program.Sub.ctxmHistory_Click.Start
+'@ Event Arg ItemName	: String = The name of the item clicked
+
+	Function.Intrinsic.Control.BlockEvents
+
+	Function.Intrinsic.Control.SelectCase(Variable.Args.ItemName.LCase)
+		'ctxDelete
+		Function.Intrinsic.Control.Case("ctxdelete")
+			Function.Intrinsic.Control.CallSub(DeleteSelectedRecord)
+		'ctxEdit
+		Function.Intrinsic.Control.Case("ctxedit")
+			Function.Intrinsic.Control.CallSub(EditSelectedRow)
+		'ctxSave
+		Function.Intrinsic.Control.Case("ctxsave")
+			Function.Intrinsic.Control.CallSub(SaveHistoryTable)
+			Function.Intrinsic.Control.CallSub(ReloadGsgcHistory)
+		'Else
+		Function.Intrinsic.Control.CaseElse
+			'Element not found
+			Function.Intrinsic.UI.MsgBox("UI element not found.", "Unregistered Event")
+	Function.Intrinsic.Control.EndSelect
+
+	Function.Intrinsic.Control.UnblockEvents
+Program.Sub.ctxmHistory_Click.End
+
+Program.Sub.cmdBrowseEmployees_Click.Start
+
+	'Confirm abandon current changes
+	Function.Intrinsic.Control.CallSub(GetUncommittedChangesExist)
+	Function.Intrinsic.Control.If(Variable.Args.bUncommittedChangesExist)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.CallSub(SaveHistoryTable)
+
+	Function.Intrinsic.Control.CallSub(SelectEmployeeFromBrowser)
+	Function.Intrinsic.Control.If(Variable.Args.sSelection.IsCancel, =, False)
+		
+		'Show selected employee data
+		Function.Intrinsic.Control.CallSub(SetEmployeeNameNumberFromSelection, "sSelection", Variable.Args.sSelection)
+		Function.Intrinsic.Control.CallSub(ReloadGsgcHistory)
+	Function.Intrinsic.Control.EndIf
+Program.Sub.cmdBrowseEmployees_Click.End
+
+Program.Sub.cmdBrowseReason_Click.Start
+
+	Function.Intrinsic.Control.CallSub(SelectReasonFromBrowser)
+
+	Function.Intrinsic.Control.If(Variable.Args.sSelection.IsCancel)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.CallSub(GetReasonPointsFromSelection, "sSelection", Variable.Args.sSelection)
+
+	Gui.F_Main.txtReason.Text(Variable.Args.sReason)
+	Gui.F_Main.txtPoints.Text(Variable.Args.fPoints)
+
+Program.Sub.cmdBrowseReason_Click.End
+
+Program.Sub.cmdPrintRecords_Click.Start
+	Gui.F_Main.cmdPrintRecords.Enabled(False)
+	
+	Function.Intrinsic.Control.CallSub(GetEmployeeReviewReportId)
+	
+	Function.Intrinsic.Control.If(Variable.Args.iEmployeeReviewReportId, !=, -1)		
+		Function.Intrinsic.Control.CallSub(PrintSelectedEmployeeReport, "iReportId", Variable.Args.iEmployeeReviewReportId)
+	
+	Function.Intrinsic.Control.Else
+		Function.Intrinsic.Control.CallSub(AlertReportIdNotFound, "sReportName", "PPT_4659_EmployeePointsSummary.rpt")
+	Function.Intrinsic.Control.EndIf
+
+	Gui.F_Main.cmdPrintRecords.Enabled(True)
+Program.Sub.cmdPrintRecords_Click.End
+
+Program.Sub.cmdAddRecord_Click.Start
+
+	Function.Intrinsic.Control.CallSub(GetInputFieldsAreEmpty)
+	Function.Intrinsic.Control.If(Variable.Args.bInputFieldsAreEmpty)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.CallSub(GetInputFieldsAreValid)
+	Function.Intrinsic.Control.If(Variable.Args.bInputFieldsAreValid.Not)
+		Function.Intrinsic.UI.MsgBox("Some fields were invalid.", "Invalid Fields")
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.CallSub(AddRowFromInputFields)
+	Function.Intrinsic.Control.CallSub(UpdateDisplayTotal)
+	Function.Intrinsic.Control.CallSub(ClearInputFields)
+
+Program.Sub.cmdAddRecord_Click.End
+
+Program.Sub.gsgcHistory_RowCellClick.Start
+
+	Function.Intrinsic.Control.If(Variable.Args.Clicks, <, 2)
+		Function.Intrinsic.Control.ExitSub
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.BlockEvents()
+	Function.Intrinsic.Control.CallSub(EditSelectedRow)
+	Function.Intrinsic.Control.UnblockEvents()
+
+Program.Sub.gsgcHistory_RowCellClick.End
+
+Program.Sub.cmdUpdateRecord_Click.Start
+	Function.Intrinsic.Control.BlockEvents()
+
+	Function.Intrinsic.Control.CallSub(GetInputFieldsAreValid)
+	Function.Intrinsic.Control.If(Variable.Args.bInputFieldsAreValid.Not)
+		Function.Intrinsic.UI.MsgBox("Fields were missing or invalid.", "Required Fields")
+	
+	Function.Intrinsic.Control.Else
+		Function.Intrinsic.Control.CallSub(UpdateRowFromInputFields, iRowIndex, Variable.Global.iSelectedRowIndex)
+		Function.Intrinsic.Control.CallSub(UpdateDisplayTotal)
+		Function.Intrinsic.Control.CallSub(ClearInputFields)
+		Function.Intrinsic.Control.CallSub(ShowAddControls)
+	Function.Intrinsic.Control.EndIf
+
+	Function.Intrinsic.Control.UnblockEvents()
+Program.Sub.cmdUpdateRecord_Click.End
+
+Program.Sub.cmdCancelUpdate_Click.Start
+
+	Function.Intrinsic.Control.CallSub(ClearInputFields)
+	Function.Intrinsic.Control.CallSub(ShowAddControls)
+	
+Program.Sub.cmdCancelUpdate_Click.End
+
+Program.Sub.F_Main_Unload.Start
+
+	Function.Intrinsic.Control.CallSub(GetUncommittedChangesExist)
+	Function.Intrinsic.Control.If(Variable.Args.bUncommittedChangesExist.Not)
+		Function.Intrinsic.Control.CallSub(SaveHistoryTable)	
+		Function.Intrinsic.Control.End
+	Function.Intrinsic.Control.EndIf
+Program.Sub.F_Main_Unload.End
+
+Program.Sub.Comments.Start
+${$5$}$2.0.0.0$}$2
+${$6$}$jrodriguez$}$20201109094636659$}$1RSdKC372jSc9kW/3CUJT9xCSh2GcIiWNX/dVq5AfybCl7WLEuDwEvtTsgjvacqz+NTpwr23sp98K0/koJQlbQ==
+Program.Sub.Comments.End
